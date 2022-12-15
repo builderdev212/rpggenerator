@@ -1,6 +1,5 @@
 #include <iostream>
 #include <iomanip>
-#include <cctype>
 #include <regex>
 #include <fstream>
 #include <vector>
@@ -74,7 +73,7 @@ int main() {
     // Compile and run the code.
     std::system(("g++ story_funcs.h story_funcs.cpp "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp -o rpg; ./rpg").c_str());
     // Delete the created files after being used.
-    std::system(("rm story_funcs.h story_funcs.cpp "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp rpg").c_str());
+    std::system(("rm "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp rpg").c_str());
 #endif
 
     // Pause the output and let the computer know the code ran fine.
