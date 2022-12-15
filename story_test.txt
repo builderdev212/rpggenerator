@@ -1,0 +1,39 @@
+i dont know how this will be read but it should be ignored.
+
+// "I" represents the introduction to the story.
+{I}-This is the intro to the story, blah blah blah.
+im ver cool >:D
+banana
+hihowewo
+
+// "S" Represents the starting option, all other following options represent other choices.
+{S}-Starting thing
+keep going.
+[S1]-1
+[S2]-2
+[S3]-3
+[S4]-4
+
+{S1}-Option 1
+[E1]-1
+[E2]-2
+
+{S2}-Option 2
+[E2]-2
+[E3]-3
+
+{S3}-Option 3
+[E3]-3
+[E4]-4
+
+{S5}-Option 4
+[E4]-4
+[E5]-5
+[S]-Go back lol
+
+// Endings :D
+<E1>-You got ending 1!
+<E2>-You got ending 2!
+<E3>-You got ending 3!
+<E4>-You got ending 4!
+<E5>-You got ending 5!
