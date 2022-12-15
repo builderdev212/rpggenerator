@@ -43,6 +43,7 @@ const std::regex TXT_SEARCH ("\\.txt$");
 void genFunc(const StorySector, std::fstream &);
 void genCPP(const std::string, const std::vector<StorySector>);
 void genH(const std::string, const std::vector<StorySector>);
+void genMain(const std::string, const std::vector<StorySector>);
 
 int main() {
     // Variables for the file.
@@ -58,11 +59,34 @@ int main() {
     // Store the data into the vector.
     readFile(filename, storyFile, paths);
 
-    // Generate the cpp file for the functions.
+    // Generate the code.
     genCPP(filename, paths);
-
-    // Generate the h file for the functions.
     genH(filename, paths);
+    genMain(filename, paths);
+
+    // Create name used for new filename.
+    std::string codeFile = filename;
+    codeFile.erase(codeFile.length()-4);
+
+    // add a newline between the inital input and this.
+    std::cout << std::endl;
+#ifdef __linux__
+    // Compile and run the code.
+    std::system(("g++ story_funcs.h story_funcs.cpp "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp -o rpg; ./rpg").c_str());
+    // Delete the created files after being used.
+    std::system(("rm story_funcs.h story_funcs.cpp "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp rpg").c_str());
+#endif
+
+    // Pause the output and let the computer know the code ran fine.
+#ifdef _WIN32
+	// This is a windows specific way to pause the output.
+	std::system("pause");
+#else
+	// This is a general way to pause the output that should work on any OS.
+	std::cout << "Press any key to continue...";
+	getchar();
+#endif
+	return 0;
 }
 
 // File operation functions.
@@ -272,4 +296,14 @@ void genH(const std::string filename, const std::vector<StorySector> paths) {
 
     // Setup the end.
     cppFile << "\n#endif\n";
+}
+
+void genMain(const std::string filename, const std::vector<StorySector> paths) {
+    // Setup the file.
+    std::string file = filename;
+    std::fstream cppFile;
+    cppFile.open(file.erase(file.length()-4)+"Main.cpp", std::ios::out);
+
+    // Setup the main file.
+    cppFile << "#include <iostream>\n#include \""+file+".h\"\n\nint main() {\n\tI();\n\tstd::cout << std::endl;\n\tS();\n}";
 }
