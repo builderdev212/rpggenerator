@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <cctype>
 #include <regex>
 #include <fstream>
 #include <vector>
@@ -19,36 +20,33 @@ struct StorySector {
 // Null story structure.
 const StorySector NULL_SECTOR;
 
+// Story structure functions.
+std::ostream& operator << (std::ostream&, StorySector&);
+
 // Constants for file operations.
 const std::string UNABLE_TO_OPEN = "Error: unable to open given file.";
+const std::string NOT_TXT = "Error: must enter a .txt file.";
 
 // Functions for file operations.
-std::fstream openFile(const std::string name);
+std::fstream openFile(const std::string);
 void getFilename(std::string &, std::fstream &);
 void readFile(const std::string, std::fstream &, std::vector<StorySector> &);
 
-// Regular Expression formulas.
+// Regex formulas.
 const std::regex PARENT_SEARCH ("^\\{[^\\{\\}]+\\}-");
 const std::regex CHILD_SEARCH ("^\\[[^\\{\\}]+\\]-");
 const std::regex ENDING_SEARCH ("^<[^<>]+>-");
 const std::regex COMMENT_SEARCH ("^//");
+const std::regex TXT_SEARCH ("\\.txt$");
 
-// Constants for file operations.
-const int NO_READ = -1;
-const int PARENT_READ = 0;
-const int CHILD_READ = 1;
-
-// Story structure functions.
-std::ostream& operator << (std::ostream&, StorySector&);
-
-// Story vector functions.
-void dispVector(std::vector<StorySector>);
+// Code generation functions.
+void genFunc(const StorySector, std::fstream &);
+void genCPP(const std::string, const std::vector<StorySector>);
+void genH(const std::string, const std::vector<StorySector>);
 
 int main() {
-    // Get the name of the story file.
+    // Variables for the file.
     std::string filename;
-
-    // Variable for file.
     std::fstream storyFile;
 
     // Setup the filename and file.
@@ -60,8 +58,11 @@ int main() {
     // Store the data into the vector.
     readFile(filename, storyFile, paths);
 
-    // Display the vector.
-    dispVector(paths);
+    // Generate the cpp file for the functions.
+    genCPP(filename, paths);
+
+    // Generate the h file for the functions.
+    genH(filename, paths);
 }
 
 // File operation functions.
@@ -90,15 +91,21 @@ void getFilename(std::string &filename, std::fstream &file) {
             // Get the name of the file.
             std::cout << "Please enter the path to your story file: ";
             getline(std::cin, filename);
+            if (!std::regex_search(filename, TXT_SEARCH)) {
+                throw NOT_TXT;
+            }
 
-            // Attempt to open the file.
-            file = openFile(filename);
-            // This next section will end the loop if no exception is thrown.
-            hasRead = true;
-
+            try {
+                // Attempt to open the file.
+                file = openFile(filename);
+                // This next section will end the loop if no exception is thrown.
+                hasRead = true;
+            } catch (std::string UNABLE_TO_OPEN) {
+                std::cout << UNABLE_TO_OPEN << std::endl;
+            }
         // If the file was not readable, tell the user and have them enter another filename.
-        } catch (std::string UNABLE_TO_OPEN) {
-            std::cout << UNABLE_TO_OPEN << std::endl;
+        } catch (std::string NOT_TXT) {
+            std::cout << NOT_TXT << std::endl;
         }
     } while (!hasRead);
 
@@ -119,14 +126,14 @@ void readFile(const std::string filename, std::fstream &file, std::vector<StoryS
     std::string currentLine;
     StorySector currentSector;
     std::smatch m;
-    int currentFind = NO_READ;
+    bool currentParent = false;
 
     // Loop through the lines in the file.
     while (getline(file, currentLine)) {
         if (!std::regex_search(currentLine, m, COMMENT_SEARCH)) {
             // See if the current line is a parent sector.
             if (std::regex_search(currentLine, m, PARENT_SEARCH) || std::regex_search(currentLine, m, ENDING_SEARCH)) {
-                currentFind = PARENT_READ;
+                currentParent = true;
 
                 // If the current sector has no parent (aka the first one.)
                 if (currentSector.parent.empty()) {
@@ -169,19 +176,18 @@ void readFile(const std::string filename, std::fstream &file, std::vector<StoryS
                     currentSector.parentText = currentLine.erase(0, 3+currentSector.parent.length());
                 }
             } else if (!currentSector.parent.empty() && std::regex_search(currentLine, m, CHILD_SEARCH) && !currentSector.isEnding && !currentSector.isIntro) {
-                currentFind = CHILD_READ;
+                currentParent = false;
                 // If a value exists, push it into the vector to store children.
                 currentSector.children.push_back(m.str(0).substr(1, m.str(0).size() - 3));
                 currentSector.childrenText.push_back(currentLine.erase(0, 3+currentSector.children.back().length()));
-            } else if ((currentLine != "") && (currentFind != NO_READ)) {
-                if (currentFind == PARENT_READ) {
-                    currentSector.parentText = currentSector.parentText + "\n" + currentLine;
-                }
+            } else if ((currentLine != "") && (currentParent)) {
+                currentSector.parentText = currentSector.parentText + "\\n" + currentLine;
             }
         }
     }
 
-
+    // Push the final path into the path vector.
+    paths.push_back(currentSector);
 }
 
 // Story structure functions.
@@ -213,9 +219,57 @@ std::ostream& operator << (std::ostream& strm, StorySector& sector) {
     return strm;
 }
 
-// Story vector functions.
-void dispVector(std::vector<StorySector> paths) {
-    for (auto it = paths.begin(); it < paths.end(); it++) {
-        std::cout << *it;
+// Code generation functions.
+void genFunc(const StorySector path, std::fstream &file) {
+    // Generate intro function.
+    if (path.isIntro) {
+        file << "void I() {\n\tstd::cout << \""+path.parentText+"\" << std::endl;\n}\n";
+    // Generate ending function.
+    } else if (path.isEnding) {
+        file << "void " << path.parent << "() {\n\tstd::cout << \""+path.parentText+"\" << std::endl;\n}\n";
+    // Generate regular function.
+    } else {
+        file << "void " << path.parent << "() {\n\tint userInput = numInput(1, "+std::to_string(path.children.size())+", \""+path.parentText;
+        for (int i = 1; i <= path.children.size(); i++) {
+            file << "\\n\\t"+std::to_string(i)+"- "+path.childrenText[i-1];
+        }
+        file << "\");\n\n\tswitch (userInput) {\n";
+        for (int i = 1; i <= path.children.size(); i++) {
+            file << "\t\tcase "+std::to_string(i)+":\n\t\t\t"+path.children[i-1]+"();\n\t\t\tbreak;\n";
+        }
+        file << "\t\tdefault:\n\t\t\tbreak;\n\t}\n}\n";
     }
+}
+
+void genCPP(const std::string filename, const std::vector<StorySector> paths) {
+    // Setup the file.
+    std::string file = filename;
+    std::fstream cppFile;
+    cppFile.open(file.erase(file.length()-4)+".cpp", std::ios::out);
+
+    // Setup the includes.
+    cppFile << "#include <iostream>\n#include <string>\n#include \"story_funcs.h\"\n#include \""+file+".h\"\n\n";
+
+    // Add all the functions.
+    for (auto it = paths.begin(); it < paths.end(); it++) {
+        genFunc(*it, cppFile);
+    }
+}
+
+void genH(const std::string filename, const std::vector<StorySector> paths) {
+    // Setup the file.
+    std::string file = filename;
+    std::fstream cppFile;
+    cppFile.open(file.erase(file.length()-4)+".h", std::ios::out);
+
+    // Setup the header.
+    cppFile << "#ifndef "+file+"\n#define "+file+"\n\n";
+
+    // Add all the functions.
+    for (auto it = paths.begin(); it < paths.end(); it++) {
+        cppFile << "void "+(it->parent)+"();\n";
+    }
+
+    // Setup the end.
+    cppFile << "\n#endif\n";
 }
