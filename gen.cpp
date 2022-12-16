@@ -44,37 +44,132 @@ void genCPP(const std::string, const std::vector<StorySector>);
 void genH(const std::string, const std::vector<StorySector>);
 void genMain(const std::string, const std::vector<StorySector>);
 
+// Menu options.
+const int CREATE_STORY = 0;
+const int PLAY_STORY = 1;
+const int QUIT = 2;
+
+// String vector operations.
+bool isInVector(const std::vector<std::string>, const std::string);
+
 int main() {
-    // Variables for the file.
-    std::string filename;
-    std::fstream storyFile;
+    // Variable used to keep the menu loop going.
+    bool exit = false;
 
-    // Setup the filename and file.
-    getFilename(filename, storyFile);
+    // Variable to store the available stories.
+    std::vector<std::string> stories;
 
-    // Vector to store story paths.
-    std::vector<StorySector> paths;
+    while (!exit) {
+        // Variables for the menu option.
+        int userChoice;
+        bool first = true;
 
-    // Store the data into the vector.
-    readFile(filename, storyFile, paths);
+        do {
+            // If user entere an incorrect value the first time.
+            if (!first) {
+                std::cout << "Invalid Choice! Please try again." << std::endl;
+            // Display the options the first time.
+            } else {
+                std::cout << "RPG Generator" << std::endl;
+                std::cout << std::setw(4) << "" << CREATE_STORY << ". Add a story." << std::endl;
+                std::cout << std::setw(4) << "" << PLAY_STORY << ". Play a story." << std::endl;
+                std::cout << std::setw(4) << "" << QUIT << ". Quit." << std::endl;
+            }
+            first = false;
 
-    // Generate the code.
-    genCPP(filename, paths);
-    genH(filename, paths);
-    genMain(filename, paths);
+            std::cout << "Enter menu choice("+std::to_string(CREATE_STORY)+"-"+std::to_string(QUIT)+"): ";
+            std::cin >> userChoice;
+        } while ((userChoice < CREATE_STORY) || (userChoice > QUIT));
 
-    // Create name used for new filename.
-    std::string codeFile = filename;
-    codeFile.erase(codeFile.length()-4);
+        std::cout << std::endl;
 
-    // add a newline between the inital input and this.
-    std::cout << std::endl;
+        switch (userChoice) {
+            case CREATE_STORY: {
+                // Variables for the file.
+                std::string filename;
+                std::string baseName;
+                std::fstream storyFile;
+
+                std::cin.ignore();
+                // Setup the filename and file.
+                do {
+                    getFilename(filename, storyFile);
+                    baseName = filename;
+                    baseName.erase(baseName.length()-4);
+                } while (isInVector(stories, baseName));
+
+                // Add the new story to the vector.
+                stories.push_back(baseName);
+
+                // Vector to store story paths.
+                std::vector<StorySector> paths;
+
+                // Store the data into the vector.
+                readFile(filename, storyFile, paths);
+
+                // Generate the code.
+                genCPP(filename, paths);
+                genH(filename, paths);
+                genMain(filename, paths);
+
 #ifdef __linux__
-    // Compile and run the code.
-    std::system(("g++ story_funcs.h story_funcs.cpp "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp -o rpg; ./rpg").c_str());
-    // Delete the created files after being used.
-    std::system(("rm "+codeFile+".h "+codeFile+".cpp "+codeFile+"Main.cpp rpg").c_str());
+                // Compile and run the code.
+                std::system(("g++ story_funcs.h story_funcs.cpp "+baseName+".h "+baseName+".cpp "+baseName+"Main.cpp -o "+baseName).c_str());
+                // Delete the created files after being used.
+                std::system(("rm "+baseName+".h "+baseName+".cpp "+baseName+"Main.cpp").c_str());
+#elifdef _WIN32
+
 #endif
+                std::cout << std::endl;
+
+                break;
+            }
+            case PLAY_STORY: {
+                if (stories.size() == 0) {
+                    std::cout << "Error: You have no stories." << std::endl;
+                    break;
+                }
+
+                int game;
+                first = true;
+
+                do {
+                    // If user enter an incorrect value the first time.
+                    if (!first) {
+                        std::cout << "Invalid Choice! Please try again." << std::endl;
+                    // Display the options the first time.
+                    } else {
+                        for (int i = 0; i < stories.size(); i++) {
+                            std::cout << "\t"+std::to_string(i+1)+"- "+stories[i] << std::endl;
+                        }
+                    }
+                    first = false;
+
+                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size())+"): ";
+                    std::cin >> game;
+                } while ((game < 1) || (game > stories.size()));
+
+                std::cout << std::endl;
+
+#ifdef __linux__
+                // Compile and run the code.
+                std::system(("./"+stories[game-1]).c_str());
+#elifdef _WIN32
+
+#endif
+                std::cout << std::endl;
+                break;
+            }
+            case QUIT:
+                // Breaks the while loop.
+                exit = true;
+                break;
+
+            default:
+                std::cout << "How did you get this to output o.0" << std::endl;
+                break;
+        }
+    }
 
     // Pause the output and let the computer know the code ran fine.
 #ifdef _WIN32
@@ -82,6 +177,7 @@ int main() {
 	std::system("pause");
 #else
 	// This is a general way to pause the output that should work on any OS.
+    std::cin.ignore();
 	std::cout << "Press any key to continue...";
 	getchar();
 #endif
@@ -305,4 +401,15 @@ void genMain(const std::string filename, const std::vector<StorySector> paths) {
 
     // Setup the main file.
     cppFile << "#include <iostream>\n#include \""+file+".h\"\n\nint main() {\n\tI();\n\tstd::cout << std::endl;\n\tS();\n}";
+}
+
+// String vector operations.
+bool isInVector(const std::vector<std::string> vals, const std::string val) {
+    for (auto it = vals.begin(); it < vals.end(); it++) {
+        if (*it == val) {
+            return true;
+        }
+    }
+
+    return false;
 }
