@@ -25,10 +25,12 @@ std::ostream& operator << (std::ostream&, StorySector&);
 // Constants for file operations.
 const std::string UNABLE_TO_OPEN = "Error: unable to open given file.";
 const std::string NOT_TXT = "Error: must enter a .txt file.";
+const std::string QUIT_CHAR = "Q";
+const std::string QUIT_CHAR_LOWER = "q";
 
 // Functions for file operations.
 std::fstream openFile(const std::string);
-void getFilename(std::string &, std::fstream &);
+std::string getFilename(std::fstream &);
 void readFile(const std::string, std::fstream &, std::vector<StorySector> &);
 
 // Regex formulas.
@@ -45,19 +47,21 @@ void genH(const std::string, const std::vector<StorySector>);
 void genMain(const std::string, const std::vector<StorySector>);
 
 // Menu options.
-const int CREATE_STORY = 0;
-const int PLAY_STORY = 1;
-const int QUIT = 2;
+const int CREATE_STORY = 1;
+const int PLAY_STORY = 2;
+const int REMOVE_STORY = 3;
+const int QUIT = 4;
 
 // String vector operations.
 bool isInVector(const std::vector<std::string>, const std::string);
+std::vector<std::string> addExistingStories();
 
 int main() {
     // Variable used to keep the menu loop going.
     bool exit = false;
 
     // Variable to store the available stories.
-    std::vector<std::string> stories;
+    std::vector<std::string> stories = addExistingStories();
 
     while (!exit) {
         // Variables for the menu option.
@@ -73,6 +77,7 @@ int main() {
                 std::cout << "RPG Generator" << std::endl;
                 std::cout << std::setw(4) << "" << CREATE_STORY << ". Add a story." << std::endl;
                 std::cout << std::setw(4) << "" << PLAY_STORY << ". Play a story." << std::endl;
+                std::cout << std::setw(4) << "" << REMOVE_STORY << ". Remove a story." << std::endl;
                 std::cout << std::setw(4) << "" << QUIT << ". Quit." << std::endl;
             }
             first = false;
@@ -92,11 +97,17 @@ int main() {
 
                 std::cin.ignore();
                 // Setup the filename and file.
-                do {
-                    getFilename(filename, storyFile);
-                    baseName = filename;
-                    baseName.erase(baseName.length()-4);
-                } while (isInVector(stories, baseName));
+                filename = getFilename(storyFile);
+                if (filename == QUIT_CHAR) {
+                    std::cout << std::endl;
+                    break;
+                }
+                baseName = filename;
+                baseName.erase(baseName.length()-4);
+                if (isInVector(stories, baseName)) {
+                    std::cout << "Error: This file already has an entry. If you wish to recompile the story you must first delete it.\n" << std::endl;
+                    break;
+                }
 
                 // Add the new story to the vector.
                 stories.push_back(baseName);
@@ -139,18 +150,22 @@ int main() {
                         std::cout << "Invalid Choice! Please try again." << std::endl;
                     // Display the options the first time.
                     } else {
+                        std::cout << "Available Stories:" << std::endl;
                         for (int i = 0; i < stories.size(); i++) {
-                            std::cout << "\t"+std::to_string(i+1)+"- "+stories[i] << std::endl;
+                            std::cout << std::setw(4) << "" << std::to_string(i+1)+". "+stories[i] << std::endl;
                         }
+                        std::cout << std::setw(4) << "" << std::to_string(stories.size()+1)+". Go back to main menu." << std::endl;
                     }
                     first = false;
 
                     std::cout << "Enter menu choice(1-"+std::to_string(stories.size())+"): ";
                     std::cin >> game;
-                } while ((game < 1) || (game > stories.size()));
+                } while ((game < 1) || (game > stories.size()+1));
 
                 std::cout << std::endl;
 
+                // If it was the last menu option, return to the main menu.
+                if (game == stories.size()+1) break;
 #ifdef __linux__
                 // Compile and run the code.
                 std::system(("./"+stories[game-1]).c_str());
@@ -160,6 +175,44 @@ int main() {
                 std::cout << std::endl;
                 break;
             }
+            case REMOVE_STORY:
+                if (stories.size() == 0) {
+                    std::cout << "Error: You have no stories.\n" << std::endl;
+                    break;
+                }
+
+                int game;
+                first = true;
+
+                do {
+                    // If user enter an incorrect value the first time.
+                    if (!first) {
+                        std::cout << "Invalid Choice! Please try again." << std::endl;
+                    // Display the options the first time.
+                    } else {
+                        std::cout << "Available Stories:" << std::endl;
+                        for (int i = 0; i < stories.size(); i++) {
+                            std::cout << std::setw(4) << "" << std::to_string(i+1)+". "+stories[i] << std::endl;
+                        }
+                        std::cout << std::setw(4) << "" << std::to_string(stories.size()+1)+". Go back to main menu." << std::endl;
+                    }
+                    first = false;
+
+                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size())+"): ";
+                    std::cin >> game;
+                } while ((game < 1) || (game > stories.size()+1));
+
+                std::cout << std::endl;
+                // If it was the last menu option, return to the main menu.
+                if (game == stories.size()+1) break;
+
+                std::cout << "Removed "+stories[game-1]+".\n" << std::endl;
+
+                // Remove the chosen story.
+                std::system(("rm "+stories[game-1]).c_str());
+                stories.erase(stories.begin()+game-1);
+                break;
+
             case QUIT:
                 // Breaks the while loop.
                 exit = true;
@@ -201,15 +254,18 @@ std::fstream openFile(const std::string filename) {
 	}
 }
 
-void getFilename(std::string &filename, std::fstream &file) {
+std::string getFilename(std::fstream &file) {
+    std::string filename;
     bool hasRead = false;
 
     // Loop until a valid file has been given.
     do {
         try {
             // Get the name of the file.
-            std::cout << "Please enter the path to your story file: ";
+            std::cout << "Please enter the path to your story file("+QUIT_CHAR+" to exit): ";
             getline(std::cin, filename);
+
+            if ((QUIT_CHAR == filename) || (QUIT_CHAR_LOWER == filename)) return QUIT_CHAR;
             if (!std::regex_search(filename, TXT_SEARCH)) {
                 throw NOT_TXT;
             }
@@ -230,6 +286,8 @@ void getFilename(std::string &filename, std::fstream &file) {
 
     // Close the file.
     file.close();
+
+    return filename;
 }
 
 void readFile(const std::string filename, std::fstream &file, std::vector<StorySector> &paths) {
@@ -307,6 +365,9 @@ void readFile(const std::string filename, std::fstream &file, std::vector<StoryS
 
     // Push the final path into the path vector.
     paths.push_back(currentSector);
+
+    // Close the file.
+    file.close();
 }
 
 // Story structure functions.
@@ -373,6 +434,9 @@ void genCPP(const std::string filename, const std::vector<StorySector> paths) {
     for (auto it = paths.begin(); it < paths.end(); it++) {
         genFunc(*it, cppFile);
     }
+
+    // Close the file.
+    cppFile.close();
 }
 
 void genH(const std::string filename, const std::vector<StorySector> paths) {
@@ -391,6 +455,9 @@ void genH(const std::string filename, const std::vector<StorySector> paths) {
 
     // Setup the end.
     cppFile << "\n#endif\n";
+
+    // Close the file.
+    cppFile.close();
 }
 
 void genMain(const std::string filename, const std::vector<StorySector> paths) {
@@ -401,6 +468,8 @@ void genMain(const std::string filename, const std::vector<StorySector> paths) {
 
     // Setup the main file.
     cppFile << "#include <iostream>\n#include \""+file+".h\"\n\nint main() {\n\tI();\n\tstd::cout << std::endl;\n\tS();\n}";
+
+    cppFile.close();
 }
 
 // String vector operations.
@@ -412,4 +481,35 @@ bool isInVector(const std::vector<std::string> vals, const std::string val) {
     }
 
     return false;
+}
+
+std::vector<std::string> addExistingStories() {
+    // Variables to store existing stories.
+    std::vector<std::string> stories;
+
+    // File to hold data read.
+    std::fstream execs;
+    std::string currentExec;
+
+    // Get the executables in the file path of the executable.
+    std::system("find . -maxdepth 1 -type f -executable > execs.txt");
+
+    // Open the file and read the data.
+    execs.open("execs.txt", std::ios::in);
+
+    while (getline(execs, currentExec)) {
+        currentExec.erase(0, 2);
+
+        // If this isn't the executable for this file, add it to the list.
+        if (currentExec != "gen") {
+            stories.push_back(currentExec);
+        }
+    }
+
+    execs.close();
+
+    // Delete the file.
+    std::system("rm execs.txt");
+
+    return stories;
 }
