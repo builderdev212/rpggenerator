@@ -126,18 +126,21 @@ int main() {
 #ifdef __linux__
                 // Compile and run the code.
                 std::system(("g++ story_funcs.h story_funcs.cpp "+baseName+".h "+baseName+".cpp "+baseName+"Main.cpp -o "+baseName).c_str());
+#endif
+#ifdef __MINGW32__
+                // Compile and run the code.
+                std::system(("g++ story_funcs.h story_funcs.cpp "+baseName+".h "+baseName+".cpp "+baseName+"Main.cpp -o "+baseName+".exe").c_str());
+#endif
                 // Delete the created files after being used.
                 std::system(("rm "+baseName+".h "+baseName+".cpp "+baseName+"Main.cpp").c_str());
-#elifdef _WIN32
 
-#endif
                 std::cout << std::endl;
 
                 break;
             }
             case PLAY_STORY: {
                 if (stories.size() == 0) {
-                    std::cout << "Error: You have no stories." << std::endl;
+                    std::cout << "Error: You have no stories.\n" << std::endl;
                     break;
                 }
 
@@ -158,7 +161,7 @@ int main() {
                     }
                     first = false;
 
-                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size())+"): ";
+                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size()+1)+"): ";
                     std::cin >> game;
                 } while ((game < 1) || (game > stories.size()+1));
 
@@ -169,8 +172,10 @@ int main() {
 #ifdef __linux__
                 // Compile and run the code.
                 std::system(("./"+stories[game-1]).c_str());
-#elifdef _WIN32
-
+#endif
+#ifdef __MINGW32__
+                // Compile and run the code.
+                std::system((stories[game-1]+".exe").c_str());
 #endif
                 std::cout << std::endl;
                 break;
@@ -198,7 +203,7 @@ int main() {
                     }
                     first = false;
 
-                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size())+"): ";
+                    std::cout << "Enter menu choice(1-"+std::to_string(stories.size()+1)+"): ";
                     std::cin >> game;
                 } while ((game < 1) || (game > stories.size()+1));
 
@@ -225,7 +230,7 @@ int main() {
     }
 
     // Pause the output and let the computer know the code ran fine.
-#ifdef _WIN32
+#ifdef _MINGW32__
 	// This is a windows specific way to pause the output.
 	std::system("pause");
 #else
@@ -501,8 +506,14 @@ std::vector<std::string> addExistingStories() {
         currentExec.erase(0, 2);
 
         // If this isn't the executable for this file, add it to the list.
+#ifdef __linux__
         if (currentExec != "gen") {
             stories.push_back(currentExec);
+#endif
+#ifdef __MINGW32__
+        if (currentExec != "gen.exe") {
+            stories.push_back(currentExec.erase(currentExec.length()-4, currentExec.length()));
+#endif
         }
     }
 
