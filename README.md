@@ -11,3 +11,8 @@ to use their creative knowledge without having to be *extremly* tech savvy.
 An end user would be able to create a story from the text file, or use
 someone else's story. Simplicity on the end user is important to me, as it's
 what makes a program good.
+
+## Default stories.
+If you wish to download the stories I have created, download the text files from
+[here.](https://github.com/builderdev212/rpgstories) Feel free to contribute your
+own stores if you like. :D
